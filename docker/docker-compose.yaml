@@ -1,0 +1,71 @@
+name: "bor"
+
+services:
+  postgres:
+    profiles:
+      - base
+    image: 'postgres:latest'
+    restart: always
+    #    depends_on:
+    #      esdb:
+    #        condition: service_healthy
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 3s
+      timeout: 1s
+      retries: 15
+    volumes:
+      - 'postgres-data:/docker-entrypoint-initdb.d'
+
+  # todo: replace with redpanda
+  kafka:
+    profiles:
+      - base
+    image: 'bitnami/kafka:latest'
+    networks:
+      - app-tier
+
+  prometheus:
+    profiles:
+      - base
+    image: prom/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+    ports:
+      - 9090:9090
+    restart: always
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prom_data:/prometheus
+    networks:
+      - monitoring
+
+  grafana:
+    profiles:
+      - base
+    image: 'grafana/grafana:latest'
+    container_name: grafana
+    ports:
+      - 3300:3000
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=grafana
+    volumes:
+      - ./grafana:/etc/grafana/provisioning/datasources
+    networks:
+      - monitoring
+
+volumes:
+  postgres-data:
+  prom_data:
+
+networks:
+  app-tier:
+  monitoring:

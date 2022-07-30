@@ -1,0 +1,31 @@
+syntax = "proto3";
+package accounts;
+
+//
+// Services
+
+service Accounts {
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountReply) {}
+}
+
+//
+// Models
+
+//
+// Accounts
+
+enum AccountType {
+  SAVINGS = 0;
+  CHECKING = 1;
+}
+
+message CreateAccountRequest {
+  string user_id = 1;
+  AccountType account_type = 2;
+}
+
+message CreateAccountReply {
+  string user_id = 1;
+  AccountType account_type = 2;
+  int32 balance = 3;
+}

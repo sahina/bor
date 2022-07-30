@@ -1,0 +1,23 @@
+syntax = "proto3";
+package transaction;
+
+//
+// Services
+
+service TransactionService {
+  rpc RecordAuthorized(RecordRequest) returns (RecordReply) {}
+}
+
+//
+// Models
+
+//
+// Record
+
+message RecordRequest {
+  string name = 1;
+}
+
+message RecordReply {
+  string message = 1;
+}
