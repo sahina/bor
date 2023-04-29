@@ -1,3 +1,8 @@
+# Sandbox code
+
+## Unit of Work
+
+```rust
 use async_trait::async_trait;
 
 use crate::correlation::CorrelationProvider;
@@ -86,7 +91,7 @@ pub trait UnitOfWork<T: Message>: Send + Sync {
     /// Unit of Work changes to `Phase::ROLLBACK`. On rollback, the cause for the rollback
     /// can obtained from the supplied
     fn on_rollback<U: UnitOfWork<T>, C: Consumer<U>>(&self, consumer: C)
-        -> Result<(), Self::Error>;
+                                                     -> Result<(), Self::Error>;
 
     /// Register given `handler` with the Unit of Work. The handler will be notified when the phase of the
     ///  Unit of Work changes to `Phase::CLEANUP`.
@@ -182,3 +187,5 @@ mod uow_test {
         consumer.and_then(consumer2);
     }
 }
+
+```

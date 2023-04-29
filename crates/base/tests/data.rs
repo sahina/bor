@@ -36,6 +36,7 @@ impl Message for SomeMessage {
     }
 }
 
+#[derive(Debug)]
 pub struct SomeHandler;
 
 #[async_trait]
@@ -53,6 +54,7 @@ pub enum HandlerError {
     Oops,
 }
 
+#[derive(Debug)]
 pub struct SomeHandlerInError;
 
 #[async_trait]

@@ -1,5 +1,3 @@
-use std::convert::Infallible;
-
 use base::trace::init_trace;
 use base::uow::registry::HandlerRegistry;
 
@@ -31,9 +29,4 @@ async fn test_registry_handle_not_existing() {
     let result = registry.handle(&SomeMessage).await;
 
     assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_new_registry() {
-    let registry: HandlerRegistry<SomeMessage, Infallible> = HandlerRegistry::new();
 }
