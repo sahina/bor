@@ -1,84 +1,95 @@
-use std::marker::PhantomData;
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
-use tracing::{error, info, trace};
+use async_trait::async_trait;
 
-use crate::message::handler::MessageHandler;
 use crate::message::Message;
-use crate::uow::trx::{Phase, TransactionManager};
 
-/// Implementation of the UnitOfWork that processes a single message.
-#[derive(Debug, Default)]
-pub struct UnitOfWork<T: Message + Clone, E, H: MessageHandler<T, E>> {
-    message: T,
-    transaction_manager: TransactionManager,
-    handler: H,
-    _phantom: PhantomData<E>,
+///  Enum indicating possible phases of the `UnitOfWork`.
+#[derive(Debug, Default, Eq, PartialEq, Clone)]
+pub enum Phase {
+    #[default]
+    NotStarted,
+    Started,
+    PrepareCommit,
+    Commit,
+    Rollback,
+    AfterCommit,
+    Cleanup,
+    Closed,
 }
 
-impl<T: Message + Clone, E, H: MessageHandler<T, E>> UnitOfWork<T, E, H> {
-    pub fn new(message: T, handler: H) -> Self {
+#[async_trait]
+pub trait UoW<T: Message> {
+    /// Starts Unit of Work.
+    fn start(&mut self);
+
+    /// Current phase of the Unit of Work.
+    fn phase(&self) -> RwLockReadGuard<Phase>;
+
+    ///  Register given consumer with the Unit of Work. The handler will be notified when the
+    /// phase of the Unit of Work changes to `Phase::ROLLBACK`. On rollback, the cause for the
+    /// rollback can obtained from the supplied.
+    fn on_rollback<F>(&mut self, consumer: F)
+    where
+        F: Fn(UnitOfWork<T>) + 'static;
+
+    /// Initiates the rollback, invoking all registered rollback with `on_rollback`.
+    fn rollback(&mut self, cause: impl Into<String>);
+}
+
+pub trait Consumer<T: Message> {
+    fn call(&self) -> UnitOfWork<T>;
+}
+
+/// Implementation of the UnitOfWork that processes a single message.
+#[derive(Default)]
+pub struct UnitOfWork<T: Message> {
+    message: T,
+    phase: RwLock<Phase>,
+    consumers: Vec<Arc<dyn Fn(UnitOfWork<T>)>>,
+    rollback: bool,
+    cause: String,
+}
+
+#[async_trait]
+impl<T: Message> UoW<T> for UnitOfWork<T> {
+    fn start(&mut self) {
+        self.rollback = false;
+        *(self.phase.write().unwrap()) = Phase::Started;
+    }
+
+    fn phase(&self) -> RwLockReadGuard<Phase> {
+        self.phase.read().unwrap()
+    }
+
+    fn on_rollback<F>(&mut self, consumer: F)
+    where
+        F: Fn(UnitOfWork<T>) + 'static,
+    {
+        self.consumers.push(Arc::new(consumer));
+    }
+
+    fn rollback(&mut self, cause: impl Into<String>) {
+        self.rollback = true;
+        self.cause = cause.into();
+    }
+}
+
+impl<T: Message> UnitOfWork<T> {
+    pub fn new(message: T) -> Self {
         UnitOfWork {
             message,
-            transaction_manager: TransactionManager::new(),
-            handler,
-            _phantom: Default::default(),
+            phase: Default::default(),
+            consumers: vec![],
+            rollback: false,
+            cause: Default::default(),
         }
     }
 
-    pub async fn begin_with(message: T, handler: H) -> Self {
-        let mut uow = UnitOfWork::new(message, handler);
-        uow.begin().await;
+    pub async fn start_with(message: T) -> Self {
+        let mut uow = UnitOfWork::new(message);
+        uow.start();
 
         uow
-    }
-
-    pub async fn begin(&mut self) {
-        trace!("uow: beginning");
-        self.execute().await;
-    }
-
-    async fn execute(&mut self) {
-        let read_phase = self.transaction_manager.phase.read().await;
-        let mut can_start = false;
-        if *read_phase == Phase::NotStarted {
-            trace!("uow: phase Phase::NotStarted ");
-            can_start = true;
-        };
-        drop(read_phase);
-
-        if can_start {
-            self.transaction_manager.start().await;
-        }
-
-        trace!("uow: executing");
-        self.transaction_manager.start().await;
-
-        let message = &self.message;
-
-        // todo: pre-commit funcs
-        self.transaction_manager.prepare_commit().await;
-
-        let result = self.handler.handle(message).await;
-        match result {
-            Ok(_) => {
-                // success
-                info!("uow: handle:success");
-                self.transaction_manager.commit().await;
-                trace!("uow: commited");
-
-                // todo: post-commit funcs
-                self.transaction_manager.after_commit().await;
-                trace!("uow: post_commited");
-            }
-            Err(_) => {
-                error!("uow: handle:error");
-                self.transaction_manager.rollback().await;
-                trace!("uow: rolled back");
-            }
-        }
-
-        // todo: cleanup funcs
-        self.transaction_manager.after_cleanup().await;
-        trace!("uow: cleaned up");
     }
 }

@@ -1,8 +1,9 @@
-use base::trace::init_trace;
-use base::uow::trx::{Phase, TransactionManager};
-use base::uow::unit_of_work::UnitOfWork;
+use std::ops::Deref;
 
-use crate::data::{SomeHandler, SomeMessage};
+use base::trace::init_trace;
+use base::uow::unit_of_work::{Phase, UnitOfWork, UoW};
+
+use crate::data::SomeMessage;
 
 mod data;
 
@@ -13,19 +14,19 @@ fn init() {
 }
 
 #[tokio::test]
-async fn test_transaction_manager() {
-    let trx = TransactionManager::new();
-    let read = trx.phase.read().await;
+async fn new_uow() {
+    let uow = UnitOfWork::new(SomeMessage);
+    let phase = uow.phase().deref().clone();
 
-    assert_eq!(*read, Phase::NotStarted);
+    assert_eq!(phase, Phase::NotStarted);
 }
 
 #[tokio::test]
-async fn test_uow() {
-    let message = SomeMessage;
-    let handler = SomeHandler;
+async fn add_handler() {
+    let mut uow = UnitOfWork::new(SomeMessage);
+    let consumer = |_uow| {
+        println!("on_rollback consumer");
+    };
 
-    let mut uow = UnitOfWork::new(message, handler);
-
-    uow.begin().await;
+    uow.on_rollback(consumer);
 }

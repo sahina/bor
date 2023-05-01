@@ -1,3 +1,6 @@
+# Transaction Manager
+
+```rust
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::trace;
@@ -68,3 +71,5 @@ impl TransactionManager {
         *phase = Phase::Rollback;
     }
 }
+
+```
