@@ -29,4 +29,17 @@ async fn add_handler() {
     };
 
     uow.on_rollback(consumer);
+
+    uow.rollback("oops");
+}
+
+#[tokio::test]
+async fn phase_order() {
+    let not_started = Phase::NotStarted;
+    let started = Phase::Started;
+    let prep_commit = Phase::PrepareCommit;
+
+    assert!(started as u32 > not_started as u32);
+    assert!(prep_commit as u32 > started as u32);
+    assert!(prep_commit as u32 > not_started as u32);
 }

@@ -9,7 +9,7 @@ pub mod payload;
 
 /// Representation of a Message, containing a Payload and MetaData. Typical examples of Messages are Commands, Events and
 /// Queries.
-pub trait Message: Send {
+pub trait Message: Send + Clone {
     /// Returns the identifier of this message. Two messages with the same identifiers should be interpreted as different
     /// representations of the same conceptual message. In such case, the meta-data may be
     /// different for both representations. The payload  be identical.

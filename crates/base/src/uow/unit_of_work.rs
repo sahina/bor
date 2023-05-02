@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use crate::message::Message;
 
 ///  Enum indicating possible phases of the `UnitOfWork`.
-#[derive(Debug, Default, Eq, PartialEq, Clone)]
+#[derive(Debug, Default, Eq, PartialEq, Clone, Copy)]
 pub enum Phase {
     #[default]
     NotStarted,
@@ -35,10 +35,19 @@ pub trait UoW<T: Message> {
 
     /// Initiates the rollback, invoking all registered rollback with `on_rollback`.
     fn rollback(&mut self, cause: impl Into<String>);
-}
 
-pub trait Consumer<T: Message> {
-    fn call(&self) -> UnitOfWork<T>;
+    /// Get the message that is being processed by the Unit of Work. A Unit of Work processes a
+    /// single Message over its life cycle.
+    fn message(&self) -> T;
+
+    ///  Execute the given {@code task} in the context of this Unit of Work. If the Unit of Work is not started yet
+    /// it will be started.
+    /// If the task executes successfully the Unit of Work is committed. If any exception is
+    /// raised while executing the task, the Unit of Work is rolled back and the exception is
+    /// thrown.
+    fn execute<F>(&self, task: F)
+    where
+        F: Fn();
 }
 
 /// Implementation of the UnitOfWork that processes a single message.
@@ -72,6 +81,24 @@ impl<T: Message> UoW<T> for UnitOfWork<T> {
     fn rollback(&mut self, cause: impl Into<String>) {
         self.rollback = true;
         self.cause = cause.into();
+
+        // check phase active and before Rollback
+        let phase = self.phase();
+        if !((*phase as u32) > (Phase::Rollback as u32) && *phase == Phase::Started) {}
+
+        // todo: log
+        // todo: invoke consumers
+    }
+
+    fn message(&self) -> T {
+        self.message.clone()
+    }
+
+    fn execute<F>(&self, _task: F)
+    where
+        F: Fn(),
+    {
+        todo!()
     }
 }
 
