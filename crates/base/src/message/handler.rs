@@ -2,7 +2,7 @@ use async_trait::async_trait;
 
 use crate::message::Message;
 
-/// Component that processes Messages.
+/// Component that handles Messages.
 #[async_trait]
 pub trait MessageHandler<T: Message, E>: Send + Sync {
     /// Handles the given message.

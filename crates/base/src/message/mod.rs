@@ -6,6 +6,7 @@ pub mod consumer;
 pub mod generic;
 pub mod handler;
 pub mod payload;
+pub mod processor;
 
 /// Representation of a Message, containing a Payload and MetaData. Typical examples of Messages are Commands, Events and
 /// Queries.
