@@ -2,9 +2,4 @@
 
 members = [
     "crates/base",
-    "crates/accounts",
-    "crates/authorization",
-    "crates/transaction",
-    "crates/web",
-    "crates/web-ui",
 ]
