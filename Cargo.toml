@@ -1,5 +1,7 @@
 [workspace]
 
 members = [
-    "crates/base",
+    "crates/account",
+    "crates/card",
+    "crates/transaction",
 ]
